@@ -466,7 +466,7 @@
         },
         _initTemplateDefaults: function () {
             var self = this, tMain1, tMain2, tPreview, tFileIcon, tClose, tCaption, tBtnDefault, tBtnLink, tBtnBrowse,
-                tModalMain, tModal, tProgress, tSize, tFooter, tActions, tActionDelete, tActionUpload, tActionZoom,
+                tModalMain, tModal, tProgress, tSize, tFooter, tActions, tActionDelete, tActionPrint, tActionUpload, tActionZoom,
                 tActionDrag, tIndicator, tTagBef, tTagBef1, tTagBef2, tTagAft, tGeneric, tHtml, tImage, tText, tVideo,
                 tAudio, tFlash, tObject, tPdf, tOther, tZoomCache, vDefaultDim;
             tMain1 = '{preview}\n' +
@@ -531,10 +531,12 @@
             tActions = '{drag}\n' +
                 '<div class="file-actions">\n' +
                 '    <div class="file-footer-buttons">\n' +
-                '        {upload} {delete} {zoom} {other}' +
+                '        {print} {upload} {delete} {zoom} {other}' +
                 '    </div>\n' +
                 '    <div class="clearfix"></div>\n' +
                 '</div>';
+            tActionPrint= '<button type="button" class="kv-file-print {printClass}" ' +
+                'title="{printTitle}" {dataUrl} {dataKey}>{printIcon}</button>';
             //noinspection HtmlUnknownAttribute
             tActionDelete = '<button type="button" class="kv-file-remove {removeClass}" ' +
                 'title="{removeTitle}" {dataUrl}{dataKey}>{removeIcon}</button>\n';
@@ -587,6 +589,7 @@
                     footer: tFooter,
                     indicator: tIndicator,
                     actions: tActions,
+                    actionPrint: tActionPrint,
                     actionDelete: tActionDelete,
                     actionUpload: tActionUpload,
                     actionZoom: tActionZoom,
@@ -672,8 +675,12 @@
                 fileActionSettings: {
                     showRemove: true,
                     showUpload: true,
+                    showPrint: true,
                     showZoom: true,
                     showDrag: true,
+                    printIcon:  '<i class="glyphicon glyphicon-print text-info"></i>',
+                    printClass: 'btn btn-xs btn-default',
+                    printTitle: '打印',
                     removeIcon: '<i class="glyphicon glyphicon-trash text-danger"></i>',
                     removeClass: 'btn btn-xs btn-default',
                     removeTitle: 'Remove file',
@@ -883,10 +890,11 @@
                         key = $h.ifSet('key', config, null), fs = self.fileActionSettings,
                         initPreviewShowDel = self.initialPreviewShowDelete || false,
                         showDel = $h.ifSet('showDelete', config, $h.ifSet('showDelete', fs, initPreviewShowDel)),
+                        showPrint= $h.ifSet('showPrint', config, $h.ifSet('showPrint', fs, true)),
                         showZoom = $h.ifSet('showZoom', config, $h.ifSet('showZoom', fs, true)),
                         showDrag = $h.ifSet('showDrag', config, $h.ifSet('showDrag', fs, true)),
                         disabled = (url === false) && isDisabled;
-                    actions = self._renderFileActions(false, showDel, showZoom, showDrag, disabled, url, key, true);
+                    actions = self._renderFileActions(false, showDel, showPrint, showZoom, showDrag, disabled, url, key, true);
                     return self._getLayoutTemplate('footer').setTokens({
                         'progress': self._renderThumbProgress(),
                         'actions': actions,
@@ -2307,6 +2315,14 @@
                     }
                 });
             });
+            /*
+            self.getFrames(' .kv-file-print').each(function () {
+                console.log("bbbb");
+                var $el = $(this);
+                self._handler($el, 'click', function () {
+                   console.log("aaaaa");
+                });
+            });*/
         },
         _initPreviewActions: function () {
             var self = this, $preview = self.$preview, deleteExtraData = self.deleteExtraData || {},
@@ -3181,7 +3197,7 @@
         },
         _renderFileFooter: function (caption, size, width, isError) {
             var self = this, config = self.fileActionSettings, rem = config.showRemove, drg = config.showDrag,
-                upl = config.showUpload, zoom = config.showZoom, out, template = self._getLayoutTemplate('footer'),
+                upl = config.showUpload, zoom = config.showZoom, print = config.showPrint,out, template = self._getLayoutTemplate('footer'),
                 ind = isError ? config.indicatorError : config.indicatorNew,
                 tInd = self._getLayoutTemplate('indicator'),
                 title = isError ? config.indicatorErrorTitle : config.indicatorNewTitle,
@@ -3189,7 +3205,7 @@
             size = self._getSize(size);
             if (self.isUploadable) {
                 out = template.setTokens({
-                    'actions': self._renderFileActions(upl, rem, zoom, drg, false, false, false),
+                    'actions': self._renderFileActions(upl, rem, print,zoom, drg, false, false, false),
                     'caption': caption,
                     'size': size,
                     'width': width,
@@ -3198,7 +3214,7 @@
                 });
             } else {
                 out = template.setTokens({
-                    'actions': self._renderFileActions(false, false, zoom, drg, false, false, false),
+                    'actions': self._renderFileActions(false, false, print,zoom, drg, false, false, false),
                     'caption': caption,
                     'size': size,
                     'width': width,
@@ -3209,13 +3225,13 @@
             out = $h.replaceTags(out, self.previewThumbTags);
             return out;
         },
-        _renderFileActions: function (showUpload, showDelete, showZoom, showDrag, disabled, url, key, isInit) {
+        _renderFileActions: function (showUpload, showDelete, showPrint, showZoom, showDrag, disabled, url, key, isInit) {
             if (!showUpload && !showDelete && !showZoom && !showDrag) {
                 return '';
             }
             var self = this, vUrl = url === false ? '' : ' data-url="' + url + '"',
                 vKey = key === false ? '' : ' data-key="' + key + '"',
-                btnDelete = '', btnUpload = '', btnZoom = '', btnDrag = '', css,
+                btnDelete = '', btnPrint = '', btnUpload = '', btnZoom = '', btnDrag = '', css,
                 template = self._getLayoutTemplate('actions'), config = self.fileActionSettings,
                 otherButtons = self.otherActionButtons.setTokens({'dataKey': vKey}),
                 removeClass = disabled ? config.removeClass + ' disabled' : config.removeClass;
@@ -3235,6 +3251,15 @@
                     'uploadTitle': config.uploadTitle
                 });
             }
+            if (showPrint) {
+                btnPrint = self._getLayoutTemplate('actionPrint').setTokens({
+                    'printClass': config.printClass,
+                    'printIcon': config.printIcon,
+                    'printTitle': config.printTitle,
+                    'dataKey': vKey,
+                    'dataUrl': vUrl
+                });
+            }
             if (showZoom) {
                 btnZoom = self._getLayoutTemplate('actionZoom').setTokens({
                     'zoomClass': config.zoomClass,
@@ -3251,6 +3276,7 @@
                 });
             }
             return template.setTokens({
+                'print' : btnPrint,
                 'delete': btnDelete,
                 'upload': btnUpload,
                 'zoom': btnZoom,
